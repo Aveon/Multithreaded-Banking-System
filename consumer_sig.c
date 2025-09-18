@@ -92,6 +92,10 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	if(shutdown_flag) {
+		fprintf(stderr, "[CONSUMER] SIGINT received, shutting down now!\n");
+	}
+
 	if (ferror(stdin)) {
 		perror("getline");
 		free(line);

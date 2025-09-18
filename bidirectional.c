@@ -46,7 +46,7 @@ int main(void) {
 		close(pipe1[0]);
 		close(pipe2[1]);
 
-		const char *msg = "hello from parent\n";
+		const char *msg = "we read you loud and clear\n";
 		if (write(pipe1[1], msg, strlen(msg)) < 0) {
 			perror("parent write"); exit(1);
 		}

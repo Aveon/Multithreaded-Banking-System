@@ -4,6 +4,7 @@
 #include <string.h>
 #include <getopt.h>
 #include <signal.h>
+#include <time.h>
 
 volatile sig_atomic_t shutdown_flag = 0;
 volatile sig_atomic_t stats_flag = 0;
@@ -81,8 +82,14 @@ int main(int argc, char *argv[]) {
 	}
 	size_t nread;
 	long total_bytes = 0;
+	clock_t start = clock();
 	while(!shutdown_flag && (nread = fread(buf, 1, (size_t)buffer_size, input)) > 0) {
 	total_bytes += (long)nread;
+
+	if(shutdown_flag) {
+		fprintf(stderr, "[PRODUCER] SIGINT received - shutting down now!\n");
+		break;
+	}
 
 	if(fwrite(buf, 1, nread, stdout) != nread) {
 			perror("fwrite");
@@ -90,13 +97,21 @@ int main(int argc, char *argv[]) {
 			if (input != stdin) fclose(input);
 			return 1;
 		}
-		usleep(5000);
+		usleep(20000);
 		if(stats_flag) {
 			stats_flag = 0;
 			fprintf(stderr, "[PRODUCER] bytes so far: %ld\n", total_bytes);
 			fflush(stderr);
 			}
 	}
+
+
+	clock_t end = clock();
+	double elapsed = ((double)(end - start)) / CLOCKS_PER_SEC;
+
+	fprintf(stderr, "[PRODUCER] elapsed: %.6f sec, bytes: %zu, MB/s: %.3f\n", elapsed, total_bytes,
+		(elapsed > 0) ? (total_bytes / 1024.0 / 1024.0 / elapsed) : 0.0);
+
 	if (ferror(input)) {
 		perror("fread");
 		free(buf);
