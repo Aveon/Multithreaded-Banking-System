@@ -45,12 +45,20 @@ To compile each phase, run the following command in your terminal:
 
 ```bash
 gcc -pthread phaseX.c -o phaseX
-
-2. Run the Programs
+```
+### 2. Run the Programs
 
 To execute the program, use:
+(X = number of phase)
 
+```bash
 ./phaseX
+```
+Performance can be measured using the built-in time command:
+
+```bash
+time ./phaseX
+```
 
 
 
