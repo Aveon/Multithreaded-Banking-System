@@ -1,93 +1,93 @@
-// Phase 2 - Mutexes added to prevent race conditions
-#include <pthread.h>
+// Phase 2 - Mutex added to protect shared account
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
+#include <math.h>
+#include <unistd.h>
 #include <time.h>
 
-#define NUM_ACCOUNTS   10
+#define NUM_THREADS 3
+#define TRANSACTIONS_PER_TELLER 1
+#define NUM_ACCOUNTS 1
 #define INITIAL_BALANCE 1000.0
-#define NUM_THREADS    4
-#define TX_PER_THREAD  50000
 
-// Account struct with per-account mutex
 typedef struct {
     int account_id;
     double balance;
     int transaction_count;
-    pthread_mutex_t lock;     
+    pthread_mutex_t lock;
 } Account;
 
-static Account accounts[NUM_ACCOUNTS];
+Account accounts[NUM_ACCOUNTS];
 
-// Initializes all accounts and their mutex locks
-static void init_accounts(void) {
-    for (int i = 0; i < NUM_ACCOUNTS; i++) {
-        accounts[i].account_id = i;
-        accounts[i].balance = INITIAL_BALANCE;
-        accounts[i].transaction_count = 0;
-        pthread_mutex_init(&accounts[i].lock, NULL);
+void deposit(int account_id, double amount) {
+    if (pthread_mutex_lock(&accounts[account_id].lock) != 0) {
+        perror("Failed to acquire lock");
+        return;
     }
-}
 
-// Destroys all account locks to release resource after we're done using them
-static void destroy_accounts(void) {
-    for (int i = 0; i < NUM_ACCOUNTS; i++)
-        pthread_mutex_destroy(&accounts[i].lock);
-}
-
-// Safely applies a deposit or withdrawal
-static void apply_amount(int account_id, double amount) {
-    if (account_id < 0 || account_id >= NUM_ACCOUNTS) return;
-    pthread_mutex_lock(&accounts[account_id].lock);
     accounts[account_id].balance += amount;
     accounts[account_id].transaction_count++;
+
     pthread_mutex_unlock(&accounts[account_id].lock);
 }
 
-// Thread routine that performs random deposits/withdrawals
-typedef struct { unsigned int seed; } ThreadArg;
+void* teller_thread(void* arg) {
+    int teller_id = *(int*)arg;
 
-// Generates random amount between -100 and +100
-static inline double rand_amount(unsigned int *seed) {
-    int r = (int)(rand_r(seed) % 201) - 100;  
-    return (double)r;
-}
-
-static void* teller_thread(void *arg) {
-    ThreadArg *a = (ThreadArg*)arg;
-    for (int i = 0; i < TX_PER_THREAD; i++) {
-        int acct = (int)(rand_r(&a->seed) % NUM_ACCOUNTS);
-        double amt = rand_amount(&a->seed);
-        apply_amount(acct, amt);
+    double amount;
+    switch (teller_id) {
+        case 1: amount = 100.0; break;
+        case 2: amount = 100.0; break;
+        case 3: amount = -50.0; break;
+        default: amount = 0.0;
     }
+
+    for (int i = 0; i < TRANSACTIONS_PER_TELLER; i++) {
+        deposit(0, amount);
+
+        printf("Thread %d: %s %.2f\n",
+               teller_id,
+               (amount >= 0 ? "Depositing" : "Withdrawing"),
+               fabs(amount));
+    }
+
     return NULL;
 }
 
 int main(void) {
-    init_accounts();
+    pthread_t threads[NUM_THREADS];
+    int thread_ids[NUM_THREADS];
 
-    pthread_t th[NUM_THREADS];
-    ThreadArg args[NUM_THREADS];
-    
-    // Launches 4 worker threads		
+    // Initialize account and mutex
+    accounts[0].account_id = 0;
+    accounts[0].balance = INITIAL_BALANCE;
+    accounts[0].transaction_count = 0;
+    pthread_mutex_init(&accounts[0].lock, NULL);
+
+    printf("Initial balance: %.2f\n", accounts[0].balance);
+
+    // Start timer
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
     for (int i = 0; i < NUM_THREADS; i++) {
-        args[i].seed = (unsigned)time(NULL) ^ (0x9e3779b9u * (i+1));
-        pthread_create(&th[i], NULL, teller_thread, &args[i]);
+        thread_ids[i] = i + 1;
+        pthread_create(&threads[i], NULL, teller_thread, &thread_ids[i]);
     }
 
-    for (int i = 0; i < NUM_THREADS; i++) pthread_join(th[i], NULL);
-
-    double total = 0.0;
-    int tx_sum = 0;
-    for (int i = 0; i < NUM_ACCOUNTS; i++) {
-        total += accounts[i].balance;
-        tx_sum += accounts[i].transaction_count;
-        printf("acct %d: balance=%.2f tx=%d\n",
-               accounts[i].account_id, accounts[i].balance, accounts[i].transaction_count);
+    for (int i = 0; i < NUM_THREADS; i++) {
+        pthread_join(threads[i], NULL);
     }
-    printf("accounts total: %.2f\n", total);
-    printf("tx_sum: %d (expected %d)\n", tx_sum, NUM_THREADS * TX_PER_THREAD);
 
-    destroy_accounts();
+    // End timer
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double elapsed = (end.tv_sec - start.tv_sec) +
+                     (end.tv_nsec - start.tv_nsec) / 1e9;
+
+    printf("Final balance: %.2f\n", accounts[0].balance);
+    printf("Execution time: %.6f seconds\n", elapsed);
+
+    pthread_mutex_destroy(&accounts[0].lock);
     return 0;
 }

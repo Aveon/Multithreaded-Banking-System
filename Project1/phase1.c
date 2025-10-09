@@ -4,52 +4,77 @@
 #include <pthread.h>
 #include <math.h>
 #include <unistd.h>
+#include <time.h>
 
-#define ITERS 2000000   // used for number of updates per thread
+#define NUM_THREADS 3
+#define TRANSACTIONS_PER_TELLER 1
+#define NUM_ACCOUNTS 1
 
-// Struct for transaction arguments
 typedef struct {
-    int    id;
+    int account_id;
+    double balance;
+    int transaction_count;
+} Account;
+
+Account accounts[NUM_ACCOUNTS];
+
+void* teller_thread(void* arg) {
+    int teller_id = *(int*)arg;
+
     double amount;
-} TxArgs;
-
-double balance = 1000.0;        // shared balance variable
-
-// Thread function
-void* tx_thread(void* p) {
-    TxArgs* a = (TxArgs*)p;
-    printf("Thread %d: %s %.2f\n",
-           a->id,
-           (a->amount >= 0 ? "Depositing" : "Withdrawing"),
-           fabs(a->amount));
-
-
-    for (int i = 0; i < ITERS; i++) {
-        double old = balance;
-        old += a->amount;
-        balance = old;               // Race conditions will occur here
-        if ((i & 0x3FF) == 0) sched_yield(); // encourages interleaving
+    switch (teller_id) {
+        case 1: amount = 100.0; break;
+        case 2: amount = 100.0; break;
+        case 3: amount = -50.0; break;
+        default: amount = 0.0;
     }
+
+    for (int i = 0; i < TRANSACTIONS_PER_TELLER; i++) {
+        double before = accounts[0].balance;
+        usleep(0);  // Encourage context switch
+        accounts[0].balance = before + amount;
+        accounts[0].transaction_count++;
+
+        printf("Thread %d: %s %.2f\n",
+               teller_id,
+               (amount >= 0 ? "Depositing" : "Withdrawing"),
+               fabs(amount));
+    }
+
     return NULL;
 }
 
 int main(void) {
-    printf("Initial balance : %.2f\n", balance);
+    pthread_t threads[NUM_THREADS];
+    int thread_ids[NUM_THREADS];
 
-    pthread_t t1, t2, t3;
-    TxArgs a1 = {1, +100.0};
-    TxArgs a2 = {2, +100.0};
-    TxArgs a3 = {3, -50.0 };
+    // Initialize account
+    accounts[0].account_id = 0;
+    accounts[0].balance = 1000.00;
+    accounts[0].transaction_count = 0;
 
-    // Launch 3 threads that will perform simultaneous updates
-    pthread_create(&t1, NULL, tx_thread, &a1);
-    pthread_create(&t2, NULL, tx_thread, &a2);
-    pthread_create(&t3, NULL, tx_thread, &a3);
+    printf("Initial balance: %.2f\n", accounts[0].balance);
 
-    pthread_join(t1, NULL);
-    pthread_join(t2, NULL);
-    pthread_join(t3, NULL);
+    // Start timer
+    struct timespec start, end;
+    clock_gettime(CLOCK_MONOTONIC, &start);
 
-    printf("Final balance : %.2f\n", balance);
+    for (int i = 0; i < NUM_THREADS; i++) {
+        thread_ids[i] = i + 1;
+        pthread_create(&threads[i], NULL, teller_thread, &thread_ids[i]);
+    }
+
+    for (int i = 0; i < NUM_THREADS; i++) {
+        pthread_join(threads[i], NULL);
+    }
+
+    // End timer
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    double elapsed = (end.tv_sec - start.tv_sec) +
+                     (end.tv_nsec - start.tv_nsec) / 1e9;
+
+    printf("Final balance: %.2f\n", accounts[0].balance);
+    printf("Execution time: %.6f seconds\n", elapsed);
+
     return 0;
 }
