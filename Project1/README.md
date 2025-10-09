@@ -41,20 +41,19 @@ This prevented circular waits and completely removed the deadlock condition.
 ## 🛠️ How to Compile and Run
 
 ### **1. Compile Each Phase**
-To compile each phase, run the following command in your terminal:
+To compile each phase, run the following command in your terminal(X = number of phase):
 
 ```bash
 gcc -pthread phaseX.c -o phaseX
 ```
 ### 2. Run the Programs
 
-To execute the program, use:
-(X = number of phase)
+To execute the program, use(X = number of phase):
 
 ```bash
 ./phaseX
 ```
-Performance can be measured using the built-in time command:
+Performance can be measured using the built-in time command(X = number of phase):
 
 ```bash
 time ./phaseX
