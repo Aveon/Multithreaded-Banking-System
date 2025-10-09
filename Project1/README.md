@@ -16,11 +16,11 @@ Since no locking was used, the final balance was different for each run, confirm
 ---
 
 ### **Phase 2**
-In Phase 2, I introduced mutex locks to prevent race conditions.  
-Each account included its own `pthread_mutex_t` lock, allowing only one thread to modify that account at a time.  
-Ten accounts were created with an initial balance of 1000, and four threads executed 50,000 random transactions each.  
-After all threads completed their operations, I released the locks to free resources.  
-This synchronization ensured consistent results and eliminated the inconsistencies seen in Phase 1.
+In Phase 2, I introduced a mutex lock to protect the common balance against race conditions.
+One of the account structures was changed to have a `pthread_mutex_t` mutex lock that allows for a deposit or withdrawal by a single thread at a time.
+Three threads were utilized: two depositing $100 each and one withdrawing $50.
+Unlike Phase 1, the program provided an identical and correct end balance on each run, ensuring that synchronization precluded interference among threads.
+
 
 ---
 
