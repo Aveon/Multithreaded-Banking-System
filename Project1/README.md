@@ -1,7 +1,7 @@
 # CS3502 - Project 1: Multi-Threaded Banking System
 
 ## Overview
-This project demonstrates multi-threaded programming concepts through the use of POXIS threads ('pthreads').
+This project demonstrates multi-threaded programming concepts through the use of POSIX threads ('pthreads').
 It is split up into four phases with each building upon each other. It begins with showcasing race conditions, introducing synchronization, deadlocks, and deadlock prevention.
 
 -----
