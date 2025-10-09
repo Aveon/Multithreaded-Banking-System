@@ -1,6 +1,0 @@
-Line 1: Hello from OwlTech
-Line 2: Empty line test below
-
-Line 4: Special chars: !@#$%
-Line 5: Long line with lots of text...
-Line 6: Last line without newline
