@@ -46,7 +46,11 @@ To compile each phase, run the following command in your terminal:
 ```bash
 gcc -pthread phaseX.c -o phaseX
 
+2. Run the Programs
+
+To execute the program, use:
+
 ./phaseX
 
-time ./phaseX
+
 
