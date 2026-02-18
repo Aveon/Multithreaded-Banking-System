@@ -1,4 +1,4 @@
-# CS3502 - Project 1: Multi-Threaded Banking System
+Multi-Threaded Banking System
 
 ## Overview
 This project demonstrates multi-threaded programming concepts through the use of POSIX threads ('pthreads').
